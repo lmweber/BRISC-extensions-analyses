@@ -417,6 +417,9 @@ for (i in seq_along(sig_genes)) {
 
 # Possible future ideas
 
+These are more speculative ideas for now, which we could consider in more detail for future work.
+
+
 ## Faster / multivariate bootstrap inference?
 
 Currently, we can use both bootstrap inference from BRISC and likelihood ratio (LR) tests from GpGp, where we are using the LR tests from GpGp as a fast approximation. The runtime for the full loop over 16,000 genes using GpGp for the LR tests is approximately 5 hours with 4 cores on my laptop. If we can use BRISC for the LR tests instead, we expect this will be faster.
@@ -429,6 +432,11 @@ However, would it somehow also be possible to perform the bootstrap inference in
 Would it be biologically meaningful to fix the bandwidth parameter in the kernel? i.e. the `phi` parameter in BRISC, or the `range` parameter in GpGp. This is not currently possible in BRISC, but can be done in GpGp. However, when I tried it out, it did not give a biologically sensible final ranking of genes.
 
 From a biological perspective, I am not sure we really want to do this, since we are interested in ranking genes according to the strength of *any* spatial patterns of expression, which may be correlated with different tissue structures for different genes. However, it is possible that this could make sense in different datasets that we have not looked at yet.
+
+
+## Multiple samples
+
+Is it possible to fit models that use data from multiple samples (i.e. multiple tissue slides) without first trying to align the x-y coordinates across slides? Aligning x-y coordinates across multiple samples is difficult or impossible both technically and biologically (does it make sense to align if the samples are from slightly different brain tissue areas?), so any way to fit models that gets around this could be quite powerful. For example, fitting a model for a given gene where a single spatial variance parameter is estimated using data from multiple samples.
 
 
 # Session info
