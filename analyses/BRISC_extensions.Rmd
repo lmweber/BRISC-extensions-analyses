@@ -293,11 +293,11 @@ system.time({
 ```
 
 
-# Extension 2: Re-use nearest neighbors array
+# Extension 2: Re-use nearest neighbors
 
-The second possible extension we have identified is to re-use the nearest neighbors array.
+The second possible extension we have identified is to re-use the array of nearest neighbors.
 
-The nearest neighbor array is currently calculated internally in `BRISC_estimation()`, so in our loop setup this is re-calculated in each iteration. If it is possible to calculate the nearest neighbors array once at the start and then pass this as an input in the loop iterations, this could potentially also save a large amount of runtime.
+The nearest neighbors are currently calculated internally in `BRISC_estimation()`, so in our loop setup these are re-calculated in each iteration. If it is possible to calculate the nearest neighbors once at the start and then pass this as an input in the loop iterations, this could potentially also save a large amount of runtime.
 
 Here is an example using GpGp, which is slower overall but can be used to demonstrate these two options.
 
@@ -348,6 +348,8 @@ Here I do this for the 206 genes in our small object from earlier and using the 
 The outputs are stored in the `rowData()` slot (which contains features metadata such as gene IDs) in the `SpatialExperiment` object.
 
 Then, we can rank genes by the p-values, which shows that the known genes with highly spatial expression patterns are highly significant, as expected.
+
+For comparison, we also show what the spatial expression patterns of some nonsignificant SVGs look like.
 
 Note that if we can extract log-likelihoods from BRISC, then we would ideally want constant terms to be included, so that the values can be easily compared against the null (non-spatial) model from `lm` in the LR tests.
 
@@ -415,9 +417,6 @@ for (i in seq_along(sig_genes)) {
   print(p)
 }
 ```
-
-
-For comparison, we also show what the spatial expression patterns of some nonsignificant SVGs look like.
 
 ```{r, fig.width=2.5, fig.height=2.5, dpi=48}
 # gene names for some nonsignificant SVGs (p-values == 1)
