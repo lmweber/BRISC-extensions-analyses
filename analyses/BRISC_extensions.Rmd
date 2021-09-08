@@ -47,7 +47,7 @@ In the context of spatial transcriptomics, "biologically informative" means gene
 - identifying a set of statistically significant SVGs (with some assumptions on e.g. kernel and bandwidth), or 
 - ranking all genes (e.g. by the estimated spatial variance component) and taking the top n% (e.g. top 10%)
 
-In practice, this means we run a method such as BRISC once per gene (i.e. a loop over the 30,000 genes, or ~16,000 genes after filtering low-expressed genes) to estimate the significance of the spatial variance parameter (sigma squared) or compare the fitted model against a null model without spatial terms, and then rank genes by the resulting p-values. We can also calculate an effect size, e.g. the proportion of spatial variance (sigma_sq / (sigma_sq + tau_sq)).
+In practice, this means we run a method such as BRISC once per gene (i.e. a loop over the 30,000 genes, or ~16,000 genes after filtering low-expressed genes) to estimate the significance of the spatial variance parameter (sigma squared) or compare the fitted model against a null model without spatial terms, and then rank genes by the resulting p-values. We can also calculate an effect size, e.g. the proportion of spatial variance (`sigma_sq / (sigma_sq + tau_sq)`).
 
 
 ## Existing methods
@@ -333,21 +333,23 @@ system.time({
 
 # Extension 3: Likelihood ratio tests
 
-The third extension relates to approximate inference using likelihood ratio tests.
+The third extension relates to approximate inference using likelihood ratio (LR) tests.
 
 The main output we use to rank genes as SVGs is the estimated significance / p-value for the spatial variance parameter (`sigma.sq` in BRISC or `sigmasq` in GpGp). (We also use the estimated proportion of spatial variance as an effect size, i.e. `sigma.sq / (sigma.sq + tau.sq)` from BRISC or `sigmasq / (sigmasq + tausq)` from GpGp.)
 
-Using the bootstrap inference from BRISC for 16,000 genes is quite slow in this case, so we have also investigated the use of a likelihood ratio test for approximate inference. This is similar to the approach used by one of the earlier methods for SVGs (SpatialDE, [Svensson et al. 2018](https://www.nature.com/articles/nmeth.4636)).
+Using the bootstrap inference from BRISC for 16,000 genes is quite slow in this case, so we have also investigated the use of a LR test for approximate inference. This is similar to the approach used by one of the earlier methods for SVGs (SpatialDE, [Svensson et al. 2018](https://www.nature.com/articles/nmeth.4636)).
 
-However, calculating the likelihood ratio tests requires us to obtain the fitted log-likelihoods for the models from each gene, so that we can calculate the deviance against a null model without spatial terms. From looking at the BRISC code, I think it is possible to extract this, but due to my inexperience with C++ / Rcpp I haven't been able to do this correctly yet.
+However, calculating the LR tests requires us to obtain the fitted log-likelihoods for the models from each gene, so that we can calculate the deviance against a null model without spatial terms. From looking at the BRISC code, I think it is possible to extract this, but due to my inexperience with C++ / Rcpp I haven't been able to do this correctly yet.
 
-As an example, using GpGp we can extract the fitted log-likelihoods as `loglik <- out$loglik`, and then calculate the likelihood ratio tests using `lm` to fit the non-spatial model. My code for this is in this function: https://github.com/lmweber/spatzli/blob/main/R/runSVGsGpGp.R
+As an example, using GpGp we can extract the fitted log-likelihoods as `loglik <- out$loglik`, and then calculate the LR tests using `lm` to fit the non-spatial model. My code for this is in this function: https://github.com/lmweber/spatzli/blob/main/R/runSVGsGpGp.R
 
 Here I do this for the 206 genes in our small object from earlier and using the function from above. (This takes ~3 minutes to run with 4 cores on my laptop.)
 
 The outputs are stored in the `rowData()` slot (which contains features metadata such as gene IDs) in the `SpatialExperiment` object.
 
 Then, we can rank genes by the p-values, which shows that the known genes with highly spatial expression patterns are highly significant, as expected.
+
+Note that if we can extract log-likelihoods from BRISC, then we would ideally want constant terms to be included, so that the values can be easily compared against the null (non-spatial) model from `lm` in the LR tests.
 
 ```{r, eval=FALSE}
 remotes::install_github("lmweber/spatzli")
