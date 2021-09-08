@@ -223,7 +223,7 @@ for (i in seq_along(interesting)) {
     geom_point(size = 0.2) + 
     coord_fixed() + 
     scale_y_reverse() + 
-    scale_color_gradient(low = "gray95", high = "blue") + 
+    scale_color_gradient(low = "gray90", high = "blue") + 
     ggtitle(gene) + 
     theme_bw() + 
     theme(panel.grid = element_blank(), 
@@ -404,7 +404,7 @@ for (i in seq_along(sig_genes)) {
     geom_point(size = 0.1) + 
     coord_fixed() + 
     scale_y_reverse() + 
-    scale_color_gradient(low = "gray95", high = "blue") + 
+    scale_color_gradient(low = "gray90", high = "blue") + 
     ggtitle(gene) + 
     theme_bw() + 
     theme(panel.grid = element_blank(), 
@@ -443,7 +443,7 @@ for (i in seq_len(n_plot)) {
     geom_point(size = 0.1) + 
     coord_fixed() + 
     scale_y_reverse() + 
-    scale_color_gradient(low = "gray95", high = "blue") + 
+    scale_color_gradient(low = "gray90", high = "blue") + 
     ggtitle(gene) + 
     theme_bw() + 
     theme(panel.grid = element_blank(), 
