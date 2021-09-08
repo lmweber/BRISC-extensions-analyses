@@ -417,6 +417,45 @@ for (i in seq_along(sig_genes)) {
 ```
 
 
+For comparison, we also show what the spatial expression patterns of some nonsignificant SVGs look like.
+
+```{r, fig.width=2.5, fig.height=2.5, dpi=48}
+# gene names for some nonsignificant SVGs (p-values == 1)
+nonsig_genes <- rowData(spe_gpgp)$gene_name[rowData(spe_gpgp)$pval == 1]
+nonsig_genes
+
+length(nonsig_genes)
+
+# number of genes to plot
+n_plot <- 18
+
+# plot expression for some nonsignificant SVGs (p-values == 1)
+for (i in seq_len(n_plot)) {
+  gene <- nonsig_genes[i]
+  ix_gene <- which(rowData(spe)$gene_name == gene)
+  
+  df <- as.data.frame(cbind(
+    spatialCoords(spe), 
+    logexpr = logcounts(spe)[ix_gene, ]
+  ))
+  
+  p <- ggplot(df, aes(x = x, y = y, color = logexpr)) + 
+    geom_point(size = 0.1) + 
+    coord_fixed() + 
+    scale_y_reverse() + 
+    scale_color_gradient(low = "gray95", high = "blue") + 
+    ggtitle(gene) + 
+    theme_bw() + 
+    theme(panel.grid = element_blank(), 
+          axis.title = element_blank(), 
+          axis.text = element_blank(), 
+          axis.ticks = element_blank())
+  
+  print(p)
+}
+```
+
+
 # Possible future ideas
 
 These are more speculative ideas for now, which we could consider in more detail for future work.
