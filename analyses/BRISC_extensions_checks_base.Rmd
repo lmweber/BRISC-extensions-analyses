@@ -1,0 +1,75 @@
+---
+title: "BRISC extensions checks (base)"
+author: "Lukas Weber"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+---
+
+```{r setup, eval=TRUE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+
+# Background
+
+This document runs several short examples to check that our updates in the `BRISC-extensions` repository (return log likelihoods, re-use ordering of coordinates, re-use nearest neighbors) do not break any existing results in unexpected ways.
+
+```{r, message=FALSE}
+library(BRISC)
+```
+
+
+## Example 1: BRISC_estimation documentation
+
+Example from `BRISC_estimation()` function documentation.
+
+Run using current CRAN version of BRISC (without new arguments for ordering and neighbors) to compare results against new version.
+
+
+### Original example
+
+```{r}
+rmvn <- function(n, mu = 0, V = matrix(1)){
+  p <- length(mu)
+  if(any(is.na(match(dim(V),p))))
+    stop("Dimension not right!")
+  D <- chol(V)
+  t(matrix(rnorm(n*p), ncol=p)%*%D + rep(mu,rep(n,p)))
+}
+
+set.seed(1)
+n <- 1000
+coords <- cbind(runif(n,0,1), runif(n,0,1))
+
+beta <- c(1,5)
+x <- cbind(rnorm(n), rnorm(n))
+
+sigma.sq = 1
+phi = 1
+tau.sq = 0.1
+
+B <- as.matrix(beta)
+D <- as.matrix(dist(coords))
+R <- exp(-phi*D)
+w <- rmvn(1, rep(0,n), sigma.sq*R)
+
+y <- rnorm(n, x%*%B + w, sqrt(tau.sq))
+
+estimation_result <- BRISC_estimation(coords, y, x)
+estimation_result$Theta ##Estimates of covariance model parameters.
+estimation_result$Beta ##Estimates of Beta
+```
+
+
+# Session info
+
+```{r}
+sessionInfo()
+```
+
