@@ -25,12 +25,12 @@ library(BRISC)
 ```
 
 
-## Example 1: BRISC_estimation documentation
+# Example 1: BRISC_estimation documentation
 
 Example from `BRISC_estimation()` function documentation.
 
 
-### Original example
+## Original example
 
 ```{r}
 rmvn <- function(n, mu = 0, V = matrix(1)){
@@ -65,7 +65,7 @@ estimation_result$Beta ##Estimates of Beta
 ```
 
 
-### Re-use ordering
+## Re-use ordering
 
 ```{r}
 # calculate ordering
@@ -123,12 +123,12 @@ all(estimation_result_order_nn$Beta == estimation_result$Beta)
 ```
 
 
-## Example 2: Human DLPFC
+# Example 2: Human DLPFC
 
 Example using spatial transcriptomics data from human dorsolateral prefrontal cortex (DLPFC) dataset (Maynard and Collado-Torres et al. 2021).
 
 
-### nnSVG: re-using ordering and neighbors
+## nnSVG: re-using ordering and neighbors
 
 Using code from nnSVG wrapper to run BRISC on a subset of 21 genes in human DLPFC dataset.
 
@@ -215,7 +215,7 @@ mat_brisc <- do.call("rbind", out_brisc)
 ```
 
 
-### nnSVG: without re-using ordering and neighbors
+## nnSVG: without re-using ordering and neighbors
 
 Run code from nnSVG wrapper without re-using ordering and neighbors.
 
@@ -263,7 +263,7 @@ mat_brisc_no_order_nn <- do.call("rbind", out_brisc)
 ```
 
 
-### Compare results
+## Compare results
 
 ```{r}
 # default: re-use ordering and neighbors

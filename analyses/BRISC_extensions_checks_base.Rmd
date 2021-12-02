@@ -25,14 +25,14 @@ library(BRISC)
 ```
 
 
-## Example 1: BRISC_estimation documentation
+# Example 1: BRISC_estimation documentation
 
 Example from `BRISC_estimation()` function documentation.
 
 Run using current CRAN version of BRISC (without new arguments for ordering and neighbors) to compare results against new version.
 
 
-### Original example
+## Original example
 
 ```{r}
 rmvn <- function(n, mu = 0, V = matrix(1)){
