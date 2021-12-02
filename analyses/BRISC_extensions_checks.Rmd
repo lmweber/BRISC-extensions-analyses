@@ -1,0 +1,285 @@
+---
+title: "BRISC extensions checks"
+author: "Lukas Weber"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    number_sections: true
+    toc_depth: 3
+    toc_float:
+      collapsed: false
+---
+
+```{r setup, eval=TRUE, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+
+# Background
+
+This document runs several short examples to check that our updates in the `BRISC-extensions` repository (return log likelihoods, re-use ordering of coordinates, re-use nearest neighbors) do not break any existing results in unexpected ways.
+
+```{r, message=FALSE}
+library(BRISC)
+```
+
+
+## Example 1: BRISC_estimation documentation
+
+Example from `BRISC_estimation()` function documentation.
+
+
+### Original example
+
+```{r}
+rmvn <- function(n, mu = 0, V = matrix(1)){
+  p <- length(mu)
+  if(any(is.na(match(dim(V),p))))
+    stop("Dimension not right!")
+  D <- chol(V)
+  t(matrix(rnorm(n*p), ncol=p)%*%D + rep(mu,rep(n,p)))
+}
+
+set.seed(1)
+n <- 1000
+coords <- cbind(runif(n,0,1), runif(n,0,1))
+
+beta <- c(1,5)
+x <- cbind(rnorm(n), rnorm(n))
+
+sigma.sq = 1
+phi = 1
+tau.sq = 0.1
+
+B <- as.matrix(beta)
+D <- as.matrix(dist(coords))
+R <- exp(-phi*D)
+w <- rmvn(1, rep(0,n), sigma.sq*R)
+
+y <- rnorm(n, x%*%B + w, sqrt(tau.sq))
+
+estimation_result <- BRISC_estimation(coords, y, x)
+estimation_result$Theta ##Estimates of covariance model parameters.
+estimation_result$Beta ##Estimates of Beta
+```
+
+
+### Re-use ordering
+
+```{r}
+# calculate ordering
+order_brisc <- BRISC_order(coords)
+
+# calculate results with ordering argument
+estimation_result_order <- BRISC_estimation(coords, y, x, 
+                                            ordering = order_brisc)
+estimation_result_order$Theta
+estimation_result_order$Beta
+
+# check if results equal
+all(estimation_result_order$Theta == estimation_result$Theta)
+all(estimation_result_order$Beta == estimation_result$Beta)
+```
+
+
+## Re-use neighbors
+
+```{r}
+# calculate neighbors
+nn_brisc <- BRISC_neighbor(coords)
+
+# calculate results with neighbors argument
+estimation_result_nn <- BRISC_estimation(coords, y, x, 
+                                         neighbor = nn_brisc)
+estimation_result_nn$Theta
+estimation_result_nn$Beta
+
+# check if results equal
+all(estimation_result_nn$Theta == estimation_result$Theta)
+all(estimation_result_nn$Beta == estimation_result$Beta)
+```
+
+
+## Re-use ordering and neighbors
+
+```{r}
+# calculate neighbors with ordering argument
+nn_brisc_order <- BRISC_neighbor(coords, ordering = order_brisc)
+
+# check if neighbors object identical with and without ordering argument
+identical(nn_brisc, nn_brisc_order)
+
+# calculate results with ordering and neighbors arguments
+estimation_result_order_nn <- BRISC_estimation(coords, y, x, 
+                                               ordering = order_brisc, 
+                                               neighbor = nn_brisc)
+estimation_result_order_nn$Theta
+estimation_result_order_nn$Beta
+
+# check if results equal
+all(estimation_result_order_nn$Theta == estimation_result$Theta)
+all(estimation_result_order_nn$Beta == estimation_result$Beta)
+```
+
+
+## Example 2: Human DLPFC
+
+Example using spatial transcriptomics data from human dorsolateral prefrontal cortex (DLPFC) dataset (Maynard and Collado-Torres et al. 2021).
+
+
+### nnSVG: re-using ordering and neighbors
+
+Using code from nnSVG wrapper to run BRISC on a subset of 21 genes in human DLPFC dataset.
+
+By default, the nnSVG wrapper re-uses both ordering and neighbors for faster runtime.
+
+Running code manually (instead of using wrapper) so we can put `set.seed()` in the same places.
+
+```{r, message=FALSE}
+library(SpatialExperiment)
+library(STexampleData)
+library(nnSVG)
+library(BRISC)
+library(BiocParallel)
+```
+
+```{r}
+# load example dataset
+spe <- Visium_humanDLPFC()
+dim(spe)
+
+# preprocessing steps
+# set seed for reproducibility
+set.seed(123)
+spe <- preprocessSVG(spe)
+dim(spe)
+
+# subsampling to select small number of random genes and one known SVG for 
+# faster runtime in example
+set.seed(123)
+ix_20 <- sample(seq_len(nrow(spe)), 20)
+ix_snap25 <- which(rowData(spe)$gene_name == "SNAP25")
+ix <- c(ix_20, ix_snap25)
+spe <- spe[ix, ]
+dim(spe)
+```
+
+```{r}
+# run BRISC via nnSVG code
+# adapting code from nnSVG wrapper at https://github.com/lmweber/nnSVG/blob/main/R/nnSVG.R
+
+# ---------
+# run BRISC
+# ---------
+
+y <- assays(spe)[["binomial_deviance_residuals"]]
+
+# scale coordinates proportionally
+coords <- spatialCoords(spe)
+range_all <- max(apply(coords, 2, function(col) diff(range(col))))
+coords <- apply(coords, 2, function(col) (col - min(col)) / range_all)
+
+# calculate ordering of coordinates
+order_brisc <- BRISC_order(coords, order = "AMMD")
+
+# calculate nearest neighbors
+nn_brisc <- BRISC_neighbor(coords, n.neighbors = 15, n_omp = 1, 
+                           search.type = "cb", ordering = order_brisc)
+
+# run BRISC using parallelization
+ix <- seq_len(nrow(y))
+out_brisc <- bplapply(ix, function(i) {
+  # fit model (intercept-only model if x is NULL)
+  y_i <- y[i, ]
+  suppressWarnings({
+    runtime <- system.time({
+      # set seed for reproducibility
+      set.seed(123)
+      out_i <- BRISC_estimation(coords = coords, y = y_i, x = NULL, 
+                                cov.model = "exponential", 
+                                ordering = order_brisc, neighbor = nn_brisc, 
+                                verbose = FALSE)
+    })
+  })
+  res_i <- c(
+    out_i$Theta, 
+    loglik = out_i$log_likelihood, 
+    runtime = runtime[["elapsed"]]
+  )
+  res_i
+}, BPPARAM = MulticoreParam(workers = 4))
+
+# collapse output list into matrix
+mat_brisc <- do.call("rbind", out_brisc)
+```
+
+
+### nnSVG: without re-using ordering and neighbors
+
+Run code from nnSVG wrapper without re-using ordering and neighbors.
+
+```{r}
+# run BRISC via nnSVG code
+# adapting code from nnSVG wrapper at https://github.com/lmweber/nnSVG/blob/main/R/nnSVG.R
+
+# ---------
+# run BRISC
+# ---------
+
+y <- assays(spe)[["binomial_deviance_residuals"]]
+
+# scale coordinates proportionally
+coords <- spatialCoords(spe)
+range_all <- max(apply(coords, 2, function(col) diff(range(col))))
+coords <- apply(coords, 2, function(col) (col - min(col)) / range_all)
+
+# run BRISC using parallelization
+ix <- seq_len(nrow(y))
+out_brisc_no_order_nn <- bplapply(ix, function(i) {
+  # fit model (intercept-only model if x is NULL)
+  y_i <- y[i, ]
+  suppressWarnings({
+    runtime <- system.time({
+      # set seed for reproducibility
+      set.seed(123)
+      out_i <- BRISC_estimation(coords = coords, y = y_i, x = NULL, 
+                                cov.model = "exponential", 
+                                order = "AMMD", 
+                                n.neighbors = 15, search.type = "cb", 
+                                verbose = FALSE)
+    })
+  })
+  res_i <- c(
+    out_i$Theta, 
+    loglik = out_i$log_likelihood, 
+    runtime = runtime[["elapsed"]]
+  )
+  res_i
+}, BPPARAM = MulticoreParam(workers = 4))
+
+# collapse output list into matrix
+mat_brisc_no_order_nn <- do.call("rbind", out_brisc)
+```
+
+
+### Compare results
+
+```{r}
+# default: re-use ordering and neighbors
+mat_brisc
+
+# without re-using ordering and neighbors
+mat_brisc_no_order_nn
+
+# check if identical
+identical(mat_brisc, mat_brisc_no_order_nn)
+```
+
+
+# Session info
+
+```{r}
+sessionInfo()
+```
+
